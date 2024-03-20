@@ -90,7 +90,7 @@ class InitFileSchema(Schema):
 
             # If Local -> remove uri as it contains internal file storage info
             transfer: BaseTransfer = Transfer.get_transfer(data["storage_class"])
-            if not transfer.type.is_serializable:
+            if not transfer.transfer_type.is_serializable:
                 data.pop("uri")
 
             # optional fields

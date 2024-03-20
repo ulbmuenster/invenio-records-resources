@@ -25,7 +25,7 @@ class TransferStatus:
 class BaseTransfer(ABC):
     """Local transfer."""
 
-    type: TransferType = None
+    transfer_type: TransferType = None
     """
     The transfer type for this transfer instance.
     Overriding classes must set this attribute.

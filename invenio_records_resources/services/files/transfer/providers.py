@@ -10,7 +10,7 @@ from .types import FETCH_TRANSFER_TYPE, LOCAL_TRANSFER_TYPE
 class LocalTransfer(BaseTransfer):
     """Local transfer."""
 
-    type = LOCAL_TRANSFER_TYPE
+    transfer_type = LOCAL_TRANSFER_TYPE
 
     def __init__(self, **kwargs):
         """Constructor."""
@@ -37,7 +37,7 @@ class LocalTransfer(BaseTransfer):
 class FetchTransfer(BaseTransfer):
     """Fetch transfer."""
 
-    type = FETCH_TRANSFER_TYPE
+    transfer_type = FETCH_TRANSFER_TYPE
 
     def __init__(self, **kwargs):
         """Constructor."""
@@ -52,7 +52,7 @@ class FetchTransfer(BaseTransfer):
         obj_kwargs = {
             "file": {
                 "uri": uri,
-                "storage_class": self.type.type,
+                "storage_class": self.transfer_type.type,
                 "checksum": file_metadata.pop("checksum", None),
                 "size": file_metadata.pop("size", None),
             }
