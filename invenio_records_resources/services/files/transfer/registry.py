@@ -2,7 +2,7 @@ from invenio_records_resources.services.files.transfer import TransferType
 
 
 class TransferRegistry:
-    DEFAULT_TRANSFER_TYPE = 'L'
+    DEFAULT_TRANSFER_TYPE = "L"
 
     def __init__(self):
         self._transfers = {}

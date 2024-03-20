@@ -13,7 +13,7 @@ from invenio_access.permissions import any_user, system_process
 from invenio_records_permissions.generators import Generator
 from invenio_search.engine import dsl
 
-from .transfer import TransferType, LOCAL_TRANSFER_TYPE
+from .transfer import LOCAL_TRANSFER_TYPE, TransferType
 
 
 class AnyUserIfFileIsLocal(Generator):

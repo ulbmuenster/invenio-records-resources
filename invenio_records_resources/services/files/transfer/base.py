@@ -13,7 +13,8 @@ from invenio_records_resources.services.files.transfer.types import TransferType
 
 
 class TransferStatus:
-    """Transfer status."""
+    """Transfer status. Constants to be used as return values for get_status."""
+
     #  Can not be enum to be json serializable, so just a class with constants.
 
     PENDING = "pending"
@@ -23,7 +24,12 @@ class TransferStatus:
 
 class BaseTransfer(ABC):
     """Local transfer."""
+
     type: TransferType = None
+    """
+    The transfer type for this transfer instance.
+    Overriding classes must set this attribute.
+    """
 
     def __init__(self, service=None, uow=None):
         """Constructor."""
@@ -61,16 +67,19 @@ class BaseTransfer(ABC):
         # e.g. system, since its the one downloading the file
         record.files.commit(file_key)
 
-    @abstractmethod
     def get_status(self, obj: FileRecord):
         """
-        Get status of a file.
+        Get status of the upload of the passed file record.
+
         Returns TransferStatus.COMPLETED if the file is uploaded,
         TransferStatus.PENDING if the file is not uploaded yet or
         TransferStatus.FAILED if the file upload failed.
-
         """
-        raise NotImplementedError()
+
+        if obj.file:
+            return TransferStatus.COMPLETED
+
+        return TransferStatus.PENDING
 
     # @abstractmethod
     # def read_file_content(self, record, file_metadata):

@@ -9,10 +9,21 @@
 """Files transfer."""
 
 
-from .providers import LocalTransfer, FetchTransfer
 from .base import Transfer
-from .types import TransferType, LOCAL_TRANSFER_TYPE, FETCH_TRANSFER_TYPE, REMOTE_TRANSFER_TYPE
+from .providers import FetchTransfer, LocalTransfer
+from .types import (
+    FETCH_TRANSFER_TYPE,
+    LOCAL_TRANSFER_TYPE,
+    REMOTE_TRANSFER_TYPE,
+    TransferType,
+)
 
-
-__all__ = ("Transfer", "TransferType", "LocalTransfer", "FetchTransfer",
-           "LOCAL_TRANSFER_TYPE", "FETCH_TRANSFER_TYPE", "REMOTE_TRANSFER_TYPE")
+__all__ = (
+    "Transfer",
+    "TransferType",
+    "LocalTransfer",
+    "FetchTransfer",
+    "LOCAL_TRANSFER_TYPE",
+    "FETCH_TRANSFER_TYPE",
+    "REMOTE_TRANSFER_TYPE",
+)

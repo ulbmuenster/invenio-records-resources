@@ -1,13 +1,15 @@
 from invenio_records_resources.records import FileRecord
-from .base import BaseTransfer, TransferStatus
-from .types import FETCH_TRANSFER_TYPE, LOCAL_TRANSFER_TYPE
+
 from ...errors import TransferException
 from ...uow import TaskOp
 from ..tasks import fetch_file
+from .base import BaseTransfer, TransferStatus
+from .types import FETCH_TRANSFER_TYPE, LOCAL_TRANSFER_TYPE
 
 
 class LocalTransfer(BaseTransfer):
     """Local transfer."""
+
     type = LOCAL_TRANSFER_TYPE
 
     def __init__(self, **kwargs):
@@ -31,14 +33,10 @@ class LocalTransfer(BaseTransfer):
 
         super().set_file_content(record, file, file_key, stream, content_length)
 
-    def get_status(self, obj):
-        """Get status of a file."""
-        # as there is a file object, the file has been uploaded, so return completed
-        return TransferStatus.COMPLETED
-
 
 class FetchTransfer(BaseTransfer):
     """Fetch transfer."""
+
     type = FETCH_TRANSFER_TYPE
 
     def __init__(self, **kwargs):
@@ -76,9 +74,3 @@ class FetchTransfer(BaseTransfer):
             )
         )
         return file
-
-    def get_status(self, obj: FileRecord) -> TransferStatus:
-        """Get status of a file."""
-        if obj.file:
-            return TransferStatus.COMPLETED
-        return TransferStatus.PENDING
