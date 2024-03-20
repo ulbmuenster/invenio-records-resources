@@ -130,12 +130,9 @@ class FileSchema(InitFileSchema):
         # the TransferType class, it should be encapsulated at File
         # wrapper class or lower.
         # TODO: fix the todo above, just now return completed
-        # has_file = obj.file is not None
-        # if has_file and TransferType(obj.file.storage_class).is_completed:
-        #     return "completed"
+
         if not obj.file:
             return "pending"
 
-        print(type(obj.file))
         transfer = Transfer.get_transfer(obj.file.storage_class)
         return transfer.get_status(obj)
