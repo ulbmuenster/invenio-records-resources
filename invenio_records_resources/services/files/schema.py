@@ -25,8 +25,7 @@ from marshmallow import (
 from marshmallow.fields import UUID, Dict, Integer, Str
 from marshmallow_utils.fields import GenMethod, Links, SanitizedUnicode, TZDateTime
 
-from .transfer import TransferType
-from .transfer.base import BaseTransfer, Transfer
+from .transfer import BaseTransfer, Transfer
 
 
 class InitFileSchema(Schema):

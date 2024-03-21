@@ -9,7 +9,7 @@
 """Files transfer."""
 
 
-from .base import Transfer
+from .base import Transfer, BaseTransfer
 from .providers import FetchTransfer, LocalTransfer
 from .types import (
     FETCH_TRANSFER_TYPE,
@@ -19,6 +19,7 @@ from .types import (
 )
 
 __all__ = (
+    "BaseTransfer",
     "Transfer",
     "TransferType",
     "LocalTransfer",

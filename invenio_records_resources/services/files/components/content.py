@@ -8,7 +8,7 @@
 
 """Files service components."""
 from ...errors import FailedFileUploadException, TransferException
-from ..transfer.base import Transfer
+from ..transfer import Transfer
 from .base import FileServiceComponent
 
 

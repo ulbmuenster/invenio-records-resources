@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from ...errors import FilesCountExceededException
 from ..schema import InitFileSchema
-from ..transfer.base import Transfer
+from ..transfer import Transfer
 from .base import FileServiceComponent
 
 
