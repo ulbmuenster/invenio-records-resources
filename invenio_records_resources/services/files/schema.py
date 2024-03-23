@@ -113,7 +113,7 @@ class FileSchema(InitFileSchema):
     created = TZDateTime(timezone=timezone.utc, format="iso", dump_only=True)
     updated = TZDateTime(timezone=timezone.utc, format="iso", dump_only=True)
 
-    status = GenMethod("dump_status")
+    status = Str(dump_only=True)
     metadata = Dict(dump_only=True)
     mimetype = Str(dump_only=True, attribute="file.mimetype")
     version_id = UUID(attribute="file.version_id")
@@ -121,17 +121,3 @@ class FileSchema(InitFileSchema):
     bucket_id = UUID(attribute="file.bucket_id")
 
     links = Links()
-
-    def dump_status(self, obj):
-        """Dump file status."""
-        # due to time constraints the status check is done here
-        # however, ideally this class should not need knowledge of
-        # the TransferType class, it should be encapsulated at File
-        # wrapper class or lower.
-        # TODO: fix the todo above, just now return completed
-
-        if not obj.file:
-            return "pending"
-
-        transfer = Transfer.get_transfer(obj.file.storage_class)
-        return transfer.get_status(obj)

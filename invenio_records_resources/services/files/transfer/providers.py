@@ -1,9 +1,7 @@
-from invenio_records_resources.records import FileRecord
-
 from ...errors import TransferException
 from ...uow import TaskOp
 from ..tasks import fetch_file
-from .base import BaseTransfer, TransferStatus
+from .base import BaseTransfer
 from .types import FETCH_TRANSFER_TYPE, LOCAL_TRANSFER_TYPE
 
 

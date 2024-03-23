@@ -12,16 +12,6 @@ from invenio_records_resources.services.errors import TransferException
 from invenio_records_resources.services.files.transfer.types import TransferType
 
 
-class TransferStatus:
-    """Transfer status. Constants to be used as return values for get_status."""
-
-    #  Can not be enum to be json serializable, so just a class with constants.
-
-    PENDING = "pending"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
 class BaseTransfer(ABC):
     """Local transfer."""
 
@@ -66,20 +56,6 @@ class BaseTransfer(ABC):
         # fetch files can be committed, its up to permissions to decide by who
         # e.g. system, since its the one downloading the file
         record.files.commit(file_key)
-
-    def get_status(self, obj: FileRecord):
-        """
-        Get status of the upload of the passed file record.
-
-        Returns TransferStatus.COMPLETED if the file is uploaded,
-        TransferStatus.PENDING if the file is not uploaded yet or
-        TransferStatus.FAILED if the file upload failed.
-        """
-
-        if obj.file:
-            return TransferStatus.COMPLETED
-
-        return TransferStatus.PENDING
 
     # @abstractmethod
     # def read_file_content(self, record, file_metadata):
