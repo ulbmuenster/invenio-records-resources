@@ -36,7 +36,7 @@ necessarily persisted in the metadata.
                 'version_id': '<object-version-id>',
                 'bucket_id': '<bucket-id>',
                 'file_id': '<file-id>,
-                'storage_class': 'A'
+                'storage_class': 'L'
                 'key': 'paper.pdf',
                 'mimetype': 'application/pdf',
                 'size': 12345,

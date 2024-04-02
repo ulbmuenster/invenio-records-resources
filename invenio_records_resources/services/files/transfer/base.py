@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from enum import Enum
 
 from flask_babel import lazy_gettext as _
 from fs.errors import CreateFailed
@@ -7,7 +6,6 @@ from invenio_files_rest.errors import FileSizeError
 from werkzeug.exceptions import ClientDisconnected
 
 from invenio_records_resources.proxies import current_transfer_registry
-from invenio_records_resources.records import FileRecord
 from invenio_records_resources.services.errors import TransferException
 from invenio_records_resources.services.files.transfer.types import TransferType
 
@@ -57,6 +55,10 @@ class BaseTransfer(ABC):
         # e.g. system, since its the one downloading the file
         record.files.commit(file_key)
 
+    def links(self, file):
+        """Get links for the file."""
+        return {}
+
     # @abstractmethod
     # def read_file_content(self, record, file_metadata):
     #     """Read a file content."""
@@ -67,9 +69,9 @@ class Transfer:
     """Transfer type."""
 
     @classmethod
-    def get_transfer(cls, file_type, **kwargs):
+    def get_transfer(cls, transfer_type, **kwargs):
         """Get transfer type."""
-        return current_transfer_registry.get_transfer(file_type, **kwargs)
+        return current_transfer_registry.get_transfer(transfer_type, **kwargs)
 
     @classmethod
     def commit_file(cls, record, file_key):
