@@ -12,10 +12,12 @@ from .base import FileServiceComponent
 from .content import FileContentComponent
 from .metadata import FileMetadataComponent
 from .processor import FileProcessorComponent
+from .multipart import FileMultipartContentComponent
 
 __all__ = (
     "FileContentComponent",
     "FileMetadataComponent",
     "FileProcessorComponent",
     "FileServiceComponent",
+    "FileMultipartContentComponent"
 )

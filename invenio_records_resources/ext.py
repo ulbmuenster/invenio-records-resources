@@ -40,7 +40,11 @@ class InvenioRecordsResources(object):
         from invenio_records_resources.services.files.transfer import (
             FetchTransfer,
             LocalTransfer,
+            RemoteTransfer,
+            MultipartTransfer
         )
 
         self.transfer_registry.register(LocalTransfer)
         self.transfer_registry.register(FetchTransfer)
+        self.transfer_registry.register(RemoteTransfer)
+        self.transfer_registry.register(MultipartTransfer)

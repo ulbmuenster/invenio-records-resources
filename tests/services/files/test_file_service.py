@@ -498,3 +498,80 @@ def test_empty_files(
     else:
         with pytest.raises(FileSizeError):
             result = file_service.commit_file(identity_simple, recid, "article.txt")
+
+
+def test_multipart_file_upload_local_storage(file_service, location, example_file_record, identity_simple):
+    """Test the multipart upload to the local storage.
+
+    - Initialize file saving
+    - Save 1 files via multipart upload
+    - Commit the files
+    - List files of the record
+    - Read file metadata
+    - Retrieve a file
+    """
+    recid = example_file_record["id"]
+    file_to_initialise = [
+        {
+            "key": "article.txt",
+            "checksum": "md5:c785060c866796cc2a1708c997154c8e",
+            "size": 17,  # 2kB
+            "metadata": {
+                "description": "Published article PDF.",
+            },
+            "storage_class": "M",
+            "parts": 2,
+        }
+    ]
+    # Initialize file saving
+    result = file_service.init_files(identity_simple, recid, file_to_initialise)
+    result = result.to_dict()
+
+    assert result["entries"][0]["key"] == file_to_initialise[0]["key"]
+    assert "parts" in result["entries"][0]["links"]
+
+    # for to_file in to_files:
+    content = BytesIO(b"test file content")
+    result = file_service.set_file_content(
+        identity_simple,
+        recid,
+        file_to_initialise[0]["key"],
+        content,
+        content.getbuffer().nbytes,
+    )
+    # TODO figure response for succesfully saved file
+    assert result.to_dict()["key"] == file_to_initialise[0]["key"]
+
+    result = file_service.commit_file(identity_simple, recid, "article.txt")
+    # TODO currently there is no status in the json between the initialisation
+    # and the commiting.
+    assert result.to_dict()["key"] == file_to_initialise[0]["key"]
+
+    # List files
+    result = file_service.list_files(identity_simple, recid)
+    assert result.to_dict()["entries"][0]["key"] == file_to_initialise[0]["key"]
+    assert result.to_dict()["entries"][0]["storage_class"] == "L"
+    assert "uri" not in result.to_dict()["entries"][0]
+
+    # Read file metadata
+    result = file_service.read_file_metadata(identity_simple, recid, "article.txt")
+    assert result.to_dict()["key"] == file_to_initialise[0]["key"]
+    assert result.to_dict()["storage_class"] == "L"
+    assert "uri" not in result.to_dict()
+
+    # Retrieve file
+    result = file_service.get_file_content(identity_simple, recid, "article.txt")
+    assert result.file_id == "article.txt"
+
+    # Delete file
+    result = file_service.delete_file(identity_simple, recid, "article.txt")
+    assert result.file_id == "article.txt"
+
+    # Assert deleted
+    result = file_service.list_files(identity_simple, recid)
+    assert result.entries
+    assert len(list(result.entries)) == 0
+
+    # Delete all remaining files
+    result = file_service.delete_all_files(identity_simple, recid)
+    assert list(result.entries) == []

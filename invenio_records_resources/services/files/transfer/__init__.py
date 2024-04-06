@@ -10,18 +10,23 @@
 
 
 from .base import BaseTransfer
-from .providers import FetchTransfer, LocalTransfer
+from .providers import FetchTransfer, LocalTransfer, MultipartTransfer, RemoteTransfer
 from .types import (
     FETCH_TRANSFER_TYPE,
     LOCAL_TRANSFER_TYPE,
     REMOTE_TRANSFER_TYPE,
+    MULTIPART_TRANSFER_TYPE
 )
 
 __all__ = (
     "BaseTransfer",
-    "LocalTransfer",
     "FetchTransfer",
-    "LOCAL_TRANSFER_TYPE",
+    "LocalTransfer",
+    "MultipartTransfer",
+    "RemoteTransfer",
+
     "FETCH_TRANSFER_TYPE",
+    "LOCAL_TRANSFER_TYPE",
+    "MULTIPART_TRANSFER_TYPE",
     "REMOTE_TRANSFER_TYPE",
 )
