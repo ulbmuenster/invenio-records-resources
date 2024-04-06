@@ -23,11 +23,11 @@ class FileContentComponent(FileServiceComponent):
         if file_record is None:
             raise Exception(f'File with key "{file_key}" has not been initialized yet.')
 
-        transfer = current_transfer_registry.get_transfer(file_record=file_record)
+        transfer = current_transfer_registry.get_transfer(
+            record=record, file_record=file_record
+        )
         try:
-            transfer.set_file_content(
-                record, file_record.file, file_key, stream, content_length
-            )
+            transfer.set_file_content(stream, content_length)
         except TransferException as e:
             failed = record.files.delete(file_key, softdelete_obj=False, remove_rf=True)
             raise FailedFileUploadException(

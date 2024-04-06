@@ -42,7 +42,15 @@ class FileItem(RecordItem):
     @property
     def links(self):
         """Get links for this result item."""
-        return self._links_tpl.expand(self._identity, self._file)
+        _links = self._links_tpl.expand(self._identity, self._file)
+
+        transfer = current_transfer_registry.get_transfer(file_record=self._file)
+        for k, v in transfer.expand_links(self._identity, _links["self"]).items():
+            if v is not None:
+                _links[k] = v
+            else:
+                _links.pop(k, None)
+        return _links
 
     def send_file(self, restricted=True, as_attachment=False):
         """Return file stream."""
@@ -102,7 +110,7 @@ class FileList(ServiceListResult):
 
             # add transfer links
             transfer = current_transfer_registry.get_transfer(file_record=entry)
-            for k, v in transfer.expand_links(self._identity, entry).items():
+            for k, v in transfer.expand_links(self._identity, links["self"]).items():
                 if v is not None:
                     links[k] = v
                 else:

@@ -41,7 +41,7 @@ class InvenioRecordsResources(object):
             FetchTransfer,
             LocalTransfer,
             RemoteTransfer,
-            MultipartTransfer
+            MultipartTransfer,
         )
 
         self.transfer_registry.register(LocalTransfer)

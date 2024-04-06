@@ -19,5 +19,5 @@ __all__ = (
     "FileMetadataComponent",
     "FileProcessorComponent",
     "FileServiceComponent",
-    "FileMultipartContentComponent"
+    "FileMultipartContentComponent",
 )

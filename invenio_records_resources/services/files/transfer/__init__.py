@@ -15,7 +15,7 @@ from .types import (
     FETCH_TRANSFER_TYPE,
     LOCAL_TRANSFER_TYPE,
     REMOTE_TRANSFER_TYPE,
-    MULTIPART_TRANSFER_TYPE
+    MULTIPART_TRANSFER_TYPE,
 )
 
 __all__ = (
@@ -24,7 +24,6 @@ __all__ = (
     "LocalTransfer",
     "MultipartTransfer",
     "RemoteTransfer",
-
     "FETCH_TRANSFER_TYPE",
     "LOCAL_TRANSFER_TYPE",
     "MULTIPART_TRANSFER_TYPE",

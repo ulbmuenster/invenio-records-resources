@@ -28,7 +28,13 @@ class BaseTransfer(ABC):
     Overriding classes must set this attribute.
     """
 
-    def __init__(self, record: Record = None, file_record: FileRecord = None, service=None, uow=None):
+    def __init__(
+        self,
+        record: Record = None,
+        file_record: FileRecord = None,
+        service=None,
+        uow=None,
+    ):
         """Constructor."""
         self.record = record
         self.file_record = file_record
@@ -40,9 +46,9 @@ class BaseTransfer(ABC):
         """Initialize a file."""
         raise NotImplementedError()
 
-    def set_file_content(self, record, file, file_key, stream, content_length):
+    def set_file_content(self, stream, content_length):
         """Set file content."""
-        bucket = record.bucket
+        bucket = self.record.bucket
 
         size_limit = bucket.size_limit
         if content_length and size_limit and content_length > size_limit:
@@ -54,11 +60,13 @@ class BaseTransfer(ABC):
             raise FileSizeError(description=desc)
 
         try:
-            record.files.create_obj(
-                file_key, stream, size=content_length, size_limit=size_limit
+            self.record.files.create_obj(
+                self.file_record.key, stream, size=content_length, size_limit=size_limit
             )
         except (ClientDisconnected, CreateFailed) as e:
-            raise TransferException(f'Transfer of File with key "{file_key}" failed.')
+            raise TransferException(
+                f'Transfer of File with key "{self.file_record.key}" failed.'
+            )
 
     def commit_file(self):
         """Commit a file."""
@@ -84,10 +92,10 @@ class BaseTransfer(ABC):
     @property
     def transfer_data(self):
         return {
-            'status': self.status,
+            "status": self.status,
         }
 
-    def expand_links(self, identity, file_record):
+    def expand_links(self, identity, self_url):
         """Expand links."""
         return {}
 

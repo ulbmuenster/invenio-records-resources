@@ -37,4 +37,5 @@ class TransferRegistry:
                 transfer_type = file_record.file.storage_class
 
         return self._transfers[transfer_type or self.DEFAULT_TRANSFER_TYPE](
-            file_record=file_record, **kwargs)
+            file_record=file_record, **kwargs
+        )

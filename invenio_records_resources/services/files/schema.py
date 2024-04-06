@@ -77,7 +77,7 @@ class InitFileSchema(Schema):
             if domain not in allowed_domains:
                 raise ValidationError("Domain not allowed", field_name="uri")
 
-    def dump(self, obj: typing.Any, *, many = None, **kwargs):
+    def dump(self, obj: typing.Any, *, many=None, **kwargs):
         raise Exception("InitFileSchema should not be used for dumping.")
 
 

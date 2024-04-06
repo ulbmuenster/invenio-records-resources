@@ -45,9 +45,8 @@ class FileMetadataComponent(FileServiceComponent):
             transfer_type = temporary_obj.pop("storage_class", None)
 
             transfer = current_transfer_registry.get_transfer(
-                transfer_type=transfer_type,
-                service=self.service,
-                uow=self.uow)
+                transfer_type=transfer_type, service=self.service, uow=self.uow
+            )
 
             _ = transfer.init_file(record, temporary_obj)
 
@@ -63,7 +62,8 @@ class FileMetadataComponent(FileServiceComponent):
             record=record,
             file_record=record.files.get(file_key),
             service=self.service,
-            uow=self.uow)
+            uow=self.uow,
+        )
 
         transfer.commit_file()
 

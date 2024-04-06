@@ -15,6 +15,7 @@ from .components import (
     FileContentComponent,
     FileMetadataComponent,
     FileProcessorComponent,
+    FileMultipartContentComponent,
 )
 from .links import FileLink
 from .processors import ImageMetadataExtractor
@@ -53,6 +54,7 @@ class FileServiceConfig(ServiceConfig):
     components = [
         FileMetadataComponent,
         FileContentComponent,
+        FileMultipartContentComponent,
         FileProcessorComponent,
     ]
 

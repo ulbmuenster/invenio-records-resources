@@ -53,10 +53,12 @@ request_stream = request_body_parser(
 request_multipart_args = request_parser(
     {
         "pid_value": ma.fields.Str(required=True),
-        "key": ma.fields.Str(), "part": ma.fields.Int()
+        "key": ma.fields.Str(),
+        "part": ma.fields.Int(),
     },
     location="view_args",
 )
+
 
 #
 # Resource
@@ -243,7 +245,6 @@ class FileResource(ErrorHandlersMixin, Resource):
             )
 
         return item.to_dict(), 200
-
 
     @request_multipart_args
     @request_stream
