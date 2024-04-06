@@ -37,12 +37,10 @@ class InvenioRecordsResources(object):
                 app.config.setdefault(k, getattr(config, k))
 
     def register_builtin_transfers(self):
-        from invenio_records_resources.services.files.transfer import (
-            FetchTransfer,
-            LocalTransfer,
-            RemoteTransfer,
-            MultipartTransfer,
-        )
+        from .services.files.transfer import MultipartTransfer
+        from .services.files.transfer import FetchTransfer
+        from .services.files.transfer import RemoteTransfer
+        from .services.files.transfer import LocalTransfer
 
         self.transfer_registry.register(LocalTransfer)
         self.transfer_registry.register(FetchTransfer)
