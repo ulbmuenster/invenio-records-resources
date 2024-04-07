@@ -74,6 +74,11 @@ class BaseTransfer(ABC):
         # e.g. system, since its the one downloading the file
         self.record.files.commit(self.file_record.key)
 
+    def delete_file(self):
+        """Delete a file. This method is called before a file is removed from the record.
+        It can be used, for example, to do a cleanup of the file in the storage."""
+        pass
+
     @property
     def status(self):
         """

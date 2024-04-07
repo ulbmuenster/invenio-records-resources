@@ -158,6 +158,14 @@ class MultipartTransfer(BaseTransfer):
             ObjectVersionTag.version_id == self.file_record.object_version_id,
         ).delete(synchronize_session="fetch")
 
+    def delete_file(self):
+        """
+        If this method is called, we are deleting a file with an active multipart upload.
+        """
+        storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
+        if storage and hasattr(storage, "multipart_abort_upload"):
+            return storage.multipart_abort_upload()
+
     @property
     def status(self):
         # if the storage_class is M, return pending

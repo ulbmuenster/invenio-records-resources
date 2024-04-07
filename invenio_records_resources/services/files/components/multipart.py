@@ -35,3 +35,10 @@ class FileMultipartContentComponent(FileServiceComponent):
             raise FailedFileUploadException(
                 file_key=file_key, recid=record.pid, file=file_record
             )
+
+    def delete_file(self, identity, id_, file_key, record, deleted_file):
+        """Delete file handler."""
+        transfer = current_transfer_registry.get_transfer(
+            record=record, file_record=deleted_file, service=self.service, uow=self.uow
+        )
+        transfer.delete_file(deleted_file)
