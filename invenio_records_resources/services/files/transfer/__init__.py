@@ -9,7 +9,7 @@
 """Files transfer."""
 
 
-from .base import BaseTransfer
+from .base import BaseTransfer, TransferStatus
 from .providers.multipart import MultipartTransfer
 from .providers.fetch import FetchTransfer
 from .providers.remote import RemoteTransfer
@@ -21,10 +21,12 @@ from .types import (
     MULTIPART_TRANSFER_TYPE,
 )
 
+
 __all__ = (
     "BaseTransfer",
     "FETCH_TRANSFER_TYPE",
     "LOCAL_TRANSFER_TYPE",
     "MULTIPART_TRANSFER_TYPE",
     "REMOTE_TRANSFER_TYPE",
+    "TransferStatus",
 )

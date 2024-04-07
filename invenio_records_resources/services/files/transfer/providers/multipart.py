@@ -1,13 +1,80 @@
 from datetime import datetime, timedelta
+from typing import Dict, Union, Any
 
 from invenio_db import db
 from invenio_files_rest import current_files_rest
 from invenio_files_rest.models import ObjectVersion, FileInstance, ObjectVersionTag
 
-from .... import LinksTemplate
+from .... import LinksTemplate, Link
 from ....errors import TransferException
 from ..base import BaseTransfer, TransferStatus
 from ..types import MULTIPART_TRANSFER_TYPE, LOCAL_TRANSFER_TYPE
+
+
+class MultipartStorageExt:
+    """An extension to the storage interface to support multipart uploads."""
+    # TODO: where to put this class? Should it be moved to invenio-files-rest
+    # or just kept here as an example, that will never be used in storage code?
+
+    def multipart_initialize_upload(self, parts, size, part_size) -> Union[None, Dict[str, str]]:
+        """
+        Initialize a multipart upload.
+
+        :param parts: The number of parts that will be uploaded.
+        :param size: The total size of the file.
+        :param part_size: The size of each part except the last one.
+
+        :returns: a dictionary of additional metadata that should be stored between
+            the initialization and the commit of the upload.
+        """
+        raise NotImplementedError()
+
+    def multipart_set_content(self, part, stream, content_length, **multipart_metadata) -> Union[None, Dict[str, str]]:
+        """
+        Set the content of a part. This method is called for each part of the
+        multipart upload when the upload comes through the Invenio server (for example,
+        the upload target is a local filesystem and not S3 or another external service).
+
+        :param part: The part number.
+        :param stream: The stream with the part content.
+        :param content_length: The content length of the part. Must be equal to the
+            part_size for all parts except the last one.
+        :param multipart_metadata: The metadata returned by the multipart_initialize_upload
+            together with "parts", "part_size" and "size".
+
+        :returns: a dictionary of additional metadata that should be stored as a result of this
+            part upload. This metadata will be passed to the commit_upload method.
+        """
+        raise NotImplementedError()
+
+    def multipart_commit_upload(self, **multipart_metadata):
+        """
+        Commit the multipart upload.
+
+        :param multipart_metadata: The metadata returned by the multipart_initialize_upload
+            and the metadata returned by the multipart_set_content for each part.
+        """
+        raise NotImplementedError()
+
+    def multipart_abort_upload(self, **multipart_metadata):
+        """
+        Abort the multipart upload.
+
+        :param multipart_metadata: The metadata returned by the multipart_initialize_upload
+            and the metadata returned by the multipart_set_content for each part.
+        """
+        raise NotImplementedError()
+
+    def multipart_links(self, base_url, **multipart_metadata) -> Dict[str, Any]:
+        """
+        Generate links for the parts of the multipart upload.
+
+        :param base_url: The base URL of the file inside the repository.
+        :param multipart_metadata: The metadata returned by the multipart_initialize_upload
+            and the metadata returned by the multipart_set_content for each part.
+        :returns: a dictionary of name of the link to link value
+        """
+        raise NotImplementedError()
 
 
 class MultipartTransfer(BaseTransfer):
@@ -47,7 +114,8 @@ class MultipartTransfer(BaseTransfer):
         # keep the multipart upload params in tags
         multipart_tags = {
             "parts": parts,
-            "part_size": part_size
+            "part_size": part_size,
+            "size": size,
         }
 
         # get the storage backend
@@ -59,7 +127,7 @@ class MultipartTransfer(BaseTransfer):
 
         # if the storage backend is multipart aware, use it
         if hasattr(storage, "multipart_initialize_upload"):
-            storage_uri, multipart_metadata = storage.multipart_initialize_upload(
+            multipart_metadata = storage.multipart_initialize_upload(
                 parts, size, part_size
             )
             multipart_tags |= multipart_metadata
@@ -72,13 +140,12 @@ class MultipartTransfer(BaseTransfer):
                     "Multipart file transfer to local storage requires part_size."
                 )
             storage.initialize(size=size)
-            storage_uri = storage.fileurl
 
         self._set_multipart_tags(version, multipart_tags)
 
         # set the uri on the file instance and potentially the checksum
         file_instance.set_uri(
-            storage_uri,
+            storage.fileurl,
             size,
             checksum or "mutlipart:unknown",
             storage_class=self.transfer_type,
@@ -148,7 +215,7 @@ class MultipartTransfer(BaseTransfer):
 
         storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
         if storage and hasattr(storage, "multipart_commit_upload"):
-            storage.multipart_commit_upload(tags)
+            storage.multipart_commit_upload(**tags)
 
         # change the storage class to local
         file_instance: FileInstance = self.file_record.object_version.file
@@ -165,7 +232,7 @@ class MultipartTransfer(BaseTransfer):
         storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
         if storage and hasattr(storage, "multipart_abort_upload"):
             tags = self._get_multipart_tags(self.file_record.object_version)
-            return storage.multipart_abort_upload(tags)
+            return storage.multipart_abort_upload(**tags)
 
     @property
     def status(self):
@@ -176,30 +243,32 @@ class MultipartTransfer(BaseTransfer):
     def expand_links(self, identity, self_url):
         # if the storage can expand links, use it
         storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
-        if storage and hasattr(storage, "multipart_links"):
-            links = storage.multipart_links(self_url)
-            return LinksTemplate(links, {
-                'base_url': self_url
-            }).expand(identity, self_url)
-
-        # add a local fallback
         tags = self._get_multipart_tags(self.file_record.object_version)
-        parts = int(tags.get("parts", 0))
-        if not parts:
-            raise TransferException(
-                "Implementation error: Multipart file missing parts tag."
-            )
-        return {
-            "content": None,  # remove content when multipart upload is not complete
-            "parts": [
+
+        if storage and hasattr(storage, "multipart_links"):
+            links = storage.multipart_links(**tags)
+        else:
+            links = {}
+
+        if 'parts' not in links:
+            # add a local fallback
+            parts = int(tags.get("parts", 0))
+            if not parts:
+                raise TransferException(
+                    "Implementation error: Multipart file missing parts tag."
+                )
+            links['parts'] = [
                 {
                     "part": part_no + 1,
                     "url": f"{self_url}/content/{part_no+1}",
                     "expiration": (datetime.utcnow() + timedelta(days=14)).isoformat(),
                 }
                 for part_no in range(parts)
-            ],
-        }
+            ]
+        if 'content' not in links:
+            links['content'] = None
+
+        return links
 
     def _get_multipart_tags(self, version):
         tags = ObjectVersionTag.query.filter(

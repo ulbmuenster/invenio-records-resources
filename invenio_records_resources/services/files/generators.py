@@ -16,28 +16,29 @@ from invenio_search.engine import dsl
 from .transfer import LOCAL_TRANSFER_TYPE, FETCH_TRANSFER_TYPE
 
 
-class AnyUserIfFileIsLocal(Generator):
-    """Allows any user."""
-
-    def needs(self, **kwargs):
-        """Enabling Needs."""
-        record = kwargs["record"]
-        file_key = kwargs.get("file_key")
-        is_file_local = True
+class LocalFileGeneratorMixin:
+    """Mixin to check if a file is local."""
+    def is_file_local(self, record, file_key):
         if file_key:
             file_record = record.files.get(file_key)
             # file_record __bool__ returns false for `if file_record`
             file = file_record.file if file_record is not None else None
-            is_file_local = not file or file.storage_class != FETCH_TRANSFER_TYPE
+            return not file or file.storage_class != FETCH_TRANSFER_TYPE
         else:
             file_records = record.files.entries
             for file_record in file_records:
                 file = file_record.file
                 if file and file.storage_class == FETCH_TRANSFER_TYPE:
-                    is_file_local = False
-                    break
+                    return False
+        return True
 
-        if is_file_local:
+
+class AnyUserIfFileIsLocal(LocalFileGeneratorMixin, Generator):
+    """Allows any user."""
+
+    def needs(self, **kwargs):
+        """Enabling Needs."""
+        if self.is_file_local(kwargs["record"], kwargs.get("file_key")):
             return [any_user]
         else:
             return [system_process]

@@ -92,12 +92,17 @@ class FileResource(ErrorHandlersMixin, Resource):
                 route("DELETE", routes["item"], self.delete),
                 route("POST", routes["item-commit"], self.create_commit),
                 route("PUT", routes["item-content"], self.update_content),
-                route(
-                    "PUT",
-                    routes["item-multipart-content"],
-                    self.update_multipart_content,
-                ),
             ]
+            if 'item-multipart-content' in routes:
+                # if there are multipart urls in routes, add them here. Currently RDM
+                # records do not have them.
+                url_rules += [
+                    route(
+                        "PUT",
+                        routes["item-multipart-content"],
+                        self.update_multipart_content,
+                    ),
+                ]
         return url_rules
 
     @request_view_args
