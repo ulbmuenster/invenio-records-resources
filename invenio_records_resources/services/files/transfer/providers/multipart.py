@@ -72,7 +72,8 @@ class MultipartTransfer(BaseTransfer):
 
         # set the uri on the file instance and potentially the checksum
         file_instance.set_uri(
-            storage_uri, size,
+            storage_uri,
+            size,
             checksum or "mutlipart:unknown",
             storage_class=self.transfer_type,
         )
@@ -120,10 +121,14 @@ class MultipartTransfer(BaseTransfer):
         )
 
         if part > parts:
-            raise TransferException("Part number is higher than total parts sent in multipart initialization.")
+            raise TransferException(
+                "Part number is higher than total parts sent in multipart initialization."
+            )
 
         if part < parts and content_length != part_size:
-            raise TransferException("Size of this part must be equal to part_size sent in multipart initialization.")
+            raise TransferException(
+                "Size of this part must be equal to part_size sent in multipart initialization."
+            )
 
         storage.update(
             stream,
@@ -150,9 +155,8 @@ class MultipartTransfer(BaseTransfer):
         # remove multipart upload settings
         ObjectVersionTag.query.filter(
             ObjectVersionTag.key.startswith("multipart:"),
-            ObjectVersionTag.version_id == self.file_record.object_version_id
+            ObjectVersionTag.version_id == self.file_record.object_version_id,
         ).delete(synchronize_session="fetch")
-
 
     @property
     def status(self):
