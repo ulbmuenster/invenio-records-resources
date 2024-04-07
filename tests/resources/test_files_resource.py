@@ -486,7 +486,9 @@ def test_download_archive(
     assert all(f.closed for f in captured_fps)
 
 
-def test_files_multipart_api_flow(app, client, search_clear, headers, input_data, location):
+def test_files_multipart_api_flow(
+    app, client, search_clear, headers, input_data, location
+):
     """Test record creation."""
     # Initialize a draft
     res = client.post("/mocks", headers=headers, json=input_data)
@@ -499,8 +501,14 @@ def test_files_multipart_api_flow(app, client, search_clear, headers, input_data
         f"/mocks/{id_}/files",
         headers=headers,
         json=[
-            {"key": "test.pdf", "title": "Test file", "storage_class": "M",
-             "parts": 2, "size": 17, "part_size": 10},
+            {
+                "key": "test.pdf",
+                "title": "Test file",
+                "storage_class": "M",
+                "parts": 2,
+                "size": 17,
+                "part_size": 10,
+            },
         ],
     )
     assert res.status_code == 201
@@ -514,16 +522,13 @@ def test_files_multipart_api_flow(app, client, search_clear, headers, input_data
         f"/api/mocks/{id_}/files/test.pdf/commit"
     )
 
-    def to_path(url):
-        url = url.split('//', maxsplit=1)[1]
-        url = url.split('/api', maxsplit=1)[1]
-        return url
-
     parts_links = {
-        x['part'] : to_path(x['url']) for x in res_file["links"]["parts"]
+        x["part"]: x["url"].split("/api", maxsplit=1)[1]
+        for x in res_file["links"]["parts"]
     }
 
     assert len(parts_links) == 2
+
     def upload_part(part_number, data):
         res = client.put(
             parts_links[part_number],

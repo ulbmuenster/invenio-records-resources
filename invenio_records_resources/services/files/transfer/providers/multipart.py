@@ -4,6 +4,7 @@ from invenio_db import db
 from invenio_files_rest import current_files_rest
 from invenio_files_rest.models import ObjectVersion, FileInstance, ObjectVersionTag
 
+from .... import LinksTemplate
 from ....errors import TransferException
 from ..base import BaseTransfer, TransferStatus
 from ..types import MULTIPART_TRANSFER_TYPE, LOCAL_TRANSFER_TYPE
@@ -44,8 +45,10 @@ class MultipartTransfer(BaseTransfer):
         version.set_file(file_instance)
 
         # keep the multipart upload params in tags
-        ObjectVersionTag.create(version, "multipart:parts", str(parts))
-        ObjectVersionTag.create(version, "multipart:part_size", str(part_size))
+        multipart_tags = {
+            "parts": parts,
+            "part_size": part_size
+        }
 
         # get the storage backend
         storage = current_files_rest.storage_factory(
@@ -55,10 +58,11 @@ class MultipartTransfer(BaseTransfer):
         )
 
         # if the storage backend is multipart aware, use it
-        if hasattr(storage, "initialize_multipart_upload"):
-            storage_uri = storage.initialize_multipart_upload(
-                file, version, parts, size, part_size
+        if hasattr(storage, "multipart_initialize_upload"):
+            storage_uri, multipart_metadata = storage.multipart_initialize_upload(
+                parts, size, part_size
             )
+            multipart_tags |= multipart_metadata
         else:
             # otherwise use it as a local storage and pre-allocate the file.
             # In this case, the part size is required as we will be uploading
@@ -69,6 +73,8 @@ class MultipartTransfer(BaseTransfer):
                 )
             storage.initialize(size=size)
             storage_uri = storage.fileurl
+
+        self._set_multipart_tags(version, multipart_tags)
 
         # set the uri on the file instance and potentially the checksum
         file_instance.set_uri(
@@ -98,27 +104,18 @@ class MultipartTransfer(BaseTransfer):
         :param content_length: The content length of the part. Must be equal to the
             part_size for all parts except the last one.
         """
+        tags = self._get_multipart_tags(self.file_record.object_version)
+
         storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
         if storage and hasattr(storage, "multipart_set_content"):
-            return storage.multipart_set_content(part, stream, content_length)
+            new_tags = {
+                **tags,
+                **(storage.multipart_set_content(part, stream, content_length, tags) or {})
+            }
+            self._set_multipart_tags(self.file_record.object_version, new_tags)
 
-        part_size = int(
-            ObjectVersionTag.query.filter(
-                ObjectVersionTag.key == "multipart:part_size",
-                ObjectVersionTag.version_id == self.file_record.object_version_id,
-            )
-            .one()
-            .value
-        )
-
-        parts = int(
-            ObjectVersionTag.query.filter(
-                ObjectVersionTag.key == "multipart:parts",
-                ObjectVersionTag.version_id == self.file_record.object_version_id,
-            )
-            .one()
-            .value
-        )
+        part_size = int(tags['part_size'])
+        parts = int(tags['parts'])
 
         if part > parts:
             raise TransferException(
@@ -147,16 +144,19 @@ class MultipartTransfer(BaseTransfer):
         """
         super().commit_file()
 
+        tags = self._get_multipart_tags(self.file_record.object_version)
+
+        storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
+        if storage and hasattr(storage, "multipart_commit_upload"):
+            storage.multipart_commit_upload(tags)
+
         # change the storage class to local
         file_instance: FileInstance = self.file_record.object_version.file
         file_instance.storage_class = LOCAL_TRANSFER_TYPE
         db.session.add(file_instance)
 
         # remove multipart upload settings
-        ObjectVersionTag.query.filter(
-            ObjectVersionTag.key.startswith("multipart:"),
-            ObjectVersionTag.version_id == self.file_record.object_version_id,
-        ).delete(synchronize_session="fetch")
+        self._remote_multipart_tags()
 
     def delete_file(self):
         """
@@ -164,7 +164,8 @@ class MultipartTransfer(BaseTransfer):
         """
         storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
         if storage and hasattr(storage, "multipart_abort_upload"):
-            return storage.multipart_abort_upload()
+            tags = self._get_multipart_tags(self.file_record.object_version)
+            return storage.multipart_abort_upload(tags)
 
     @property
     def status(self):
@@ -175,14 +176,15 @@ class MultipartTransfer(BaseTransfer):
     def expand_links(self, identity, self_url):
         # if the storage can expand links, use it
         storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
-        if storage and hasattr(storage, "multipart_expand_links"):
-            return storage.multipart_expand_links(identity, self.file_record)
+        if storage and hasattr(storage, "multipart_links"):
+            links = storage.multipart_links(self_url)
+            return LinksTemplate(links, {
+                'base_url': self_url
+            }).expand(identity, self_url)
 
         # add a local fallback
-        parts = ObjectVersionTag.query.filter(
-            ObjectVersionTag.key == "multipart:parts",
-            ObjectVersionTag.version_id == self.file_record.object_version_id,
-        ).one_or_none()
+        tags = self._get_multipart_tags(self.file_record.object_version)
+        parts = int(tags.get("parts", 0))
         if not parts:
             raise TransferException(
                 "Implementation error: Multipart file missing parts tag."
@@ -191,10 +193,41 @@ class MultipartTransfer(BaseTransfer):
             "content": None,  # remove content when multipart upload is not complete
             "parts": [
                 {
-                    "part": part_no+1,
+                    "part": part_no + 1,
                     "url": f"{self_url}/content/{part_no+1}",
                     "expiration": (datetime.utcnow() + timedelta(days=14)).isoformat(),
                 }
-                for part_no in range(int(parts.value))
+                for part_no in range(parts)
             ],
         }
+
+    def _get_multipart_tags(self, version):
+        tags = ObjectVersionTag.query.filter(
+            ObjectVersionTag.key.startswith("multipart:"),
+            ObjectVersionTag.version_id == version.version_id,
+        ).all()
+        return {tag.key.split(":")[1]: tag.value for tag in tags}
+
+    def _set_multipart_tags(self, version, tags):
+        existing_tags = ObjectVersionTag.query.filter(
+            ObjectVersionTag.key.startswith("multipart:"),
+            ObjectVersionTag.version_id == version.version_id,
+        ).all()
+        existing_tags_by_key = {tag.key: tag for tag in existing_tags}
+        for k, v in tags.items():
+            v = str(v)
+            k = f"multipart:{k}"
+            existing_tag = existing_tags_by_key.pop(k, None)
+            if existing_tag:
+                if existing_tag.value != v:
+                    ObjectVersionTag.create_or_update(version, k, v)
+            else:
+                ObjectVersionTag.create(version, k, v)
+        for tag in existing_tags_by_key.keys():
+            ObjectVersionTag.delete(version, tag)
+
+    def _remote_multipart_tags(self):
+        ObjectVersionTag.query.filter(
+            ObjectVersionTag.key.startswith("multipart:"),
+            ObjectVersionTag.version_id == self.file_record.object_version_id,
+        ).delete(synchronize_session="fetch")
