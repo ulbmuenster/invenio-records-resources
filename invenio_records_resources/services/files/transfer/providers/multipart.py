@@ -31,55 +31,128 @@ class MultipartTransfer(BaseTransfer):
 
         file = record.files.create(key=file_metadata.pop("key"), data=file_metadata)
 
+        # create the object version and associated file instance that holds the storage_class
         version = ObjectVersion.create(record.bucket, file.key)
         file.object_version = version
         file.object_version_id = version.version_id
         file.commit()
 
-        default_location = version.bucket.location.uri
-
+        # create the file instance that will be used to get the storage factory.
+        # it might also be used to initialize the file (preallocate its size)
         file_instance = FileInstance.create()
         db.session.add(file_instance)
         version.set_file(file_instance)
 
-        # get the storage backend
-        storage = current_files_rest.storage_factory(
-            fileinstance=file_instance,
-            default_location=default_location,
-            default_storage_class=self.transfer_type,
-        )
-
+        # keep the multipart upload params in tags
         ObjectVersionTag.create(version, "multipart:parts", str(parts))
         ObjectVersionTag.create(version, "multipart:part_size", str(part_size))
 
+        # get the storage backend
+        storage = current_files_rest.storage_factory(
+            fileinstance=file_instance,
+            default_location=(version.bucket.location.uri),
+            default_storage_class=self.transfer_type,
+        )
+
+        # if the storage backend is multipart aware, use it
         if hasattr(storage, "initialize_multipart_upload"):
-            file_instance.set_uri(
-                *storage.initialize_multipart_upload(
-                    file, version, parts, size, part_size
-                ),
-                checksum or "mutlipart:unknown",
-                storage_class=self.transfer_type,
+            storage_uri = storage.initialize_multipart_upload(
+                file, version, parts, size, part_size
             )
         else:
-            file_instance.set_uri(
-                *self._initialize_local_multipart_upload(
-                    storage, file_instance, parts, size, part_size
-                ),
-                checksum or "mutlipart:unknown",
-                storage_class=self.transfer_type,
-            )
+            # otherwise use it as a local storage and pre-allocate the file.
+            # In this case, the part size is required as we will be uploading
+            # the parts in place to not double the space required.
+            if not part_size:
+                raise TransferException(
+                    "Multipart file transfer to local storage requires part_size."
+                )
+            storage.initialize(size=size)
+            storage_uri = storage.fileurl
+
+        # set the uri on the file instance and potentially the checksum
+        file_instance.set_uri(
+            storage_uri, size,
+            checksum or "mutlipart:unknown",
+            storage_class=self.transfer_type,
+        )
+
         db.session.add(file_instance)
         return file
 
-    def _initialize_local_multipart_upload(
-        self, storage, file_instance, parts, size, part_size
-    ):
-        if not part_size:
-            raise TransferException(
-                "Multipart file transfer to local storage requires part_size."
+    def set_file_content(self, stream, content_length):
+        """Set file content."""
+        raise TransferException(
+            "Can not set content for multipart file, " "use the parts instead."
+        )
+
+    def set_file_multipart_content(self, part, stream, content_length):
+        """
+        Set file content for a part. This method is called for each part of the
+        multipart upload when the upload comes through the Invenio server (for example,
+        the upload target is a local filesystem and not S3 or another external service).
+
+        :param part: The part number.
+        :param stream: The stream with the part content.
+        :param content_length: The content length of the part. Must be equal to the
+            part_size for all parts except the last one.
+        """
+        storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
+        if storage and hasattr(storage, "multipart_set_content"):
+            return storage.multipart_set_content(part, stream, content_length)
+
+        part_size = int(
+            ObjectVersionTag.query.filter(
+                ObjectVersionTag.key == "multipart:part_size",
+                ObjectVersionTag.version_id == self.file_record.object_version_id,
             )
-        storage.initialize(size=size)
-        return storage.fileurl, size
+            .one()
+            .value
+        )
+
+        parts = int(
+            ObjectVersionTag.query.filter(
+                ObjectVersionTag.key == "multipart:parts",
+                ObjectVersionTag.version_id == self.file_record.object_version_id,
+            )
+            .one()
+            .value
+        )
+
+        if part > parts:
+            raise TransferException("Part number is higher than total parts sent in multipart initialization.")
+
+        if part < parts and content_length != part_size:
+            raise TransferException("Size of this part must be equal to part_size sent in multipart initialization.")
+
+        storage.update(
+            stream,
+            seek=(int(part) - 1) * part_size,
+            size=content_length,
+        )
+
+    def commit_file(self):
+        """
+        Commit the file. This method is called after all parts have been uploaded.
+        It then changes the storage class to local, thus turning the uploaded file
+        into a file that can be sent via the configured storage backend.
+
+        This is the same principle that Fetch uses to turn a file from a remote storage
+        into a locally served one.
+        """
+        super().commit_file()
+
+        # change the storage class to local
+        file_instance: FileInstance = self.file_record.object_version.file
+        file_instance.storage_class = LOCAL_TRANSFER_TYPE
+        db.session.add(file_instance)
+
+        # remove multipart upload settings
+        ObjectVersionTag.query.filter(
+            ObjectVersionTag.key.startswith("multipart:"),
+            ObjectVersionTag.version_id == self.file_record.object_version_id
+        ).delete(synchronize_session="fetch")
+
 
     @property
     def status(self):
@@ -113,34 +186,3 @@ class MultipartTransfer(BaseTransfer):
                 for part_no in range(int(parts.value))
             ],
         }
-
-    def set_file_content(self, stream, content_length):
-        """Set file content."""
-        raise TransferException(
-            "Can not set content for multipart file, " "use the parts instead."
-        )
-
-    def set_file_multipart_content(self, part, stream, content_length):
-        storage = current_files_rest.storage_factory(fileinstance=self.file_record.file)
-        if storage and hasattr(storage, "multipart_set_content"):
-            return storage.multipart_set_content(part, stream, content_length)
-        part_size = int(
-            ObjectVersionTag.query.filter(
-                ObjectVersionTag.key == "multipart:part_size",
-                ObjectVersionTag.version_id == self.file_record.object_version_id,
-            )
-            .one()
-            .value
-        )
-        storage.update(
-            stream,
-            seek=(int(part) - 1) * part_size,
-            size=content_length,
-        )
-
-    def commit_file(self):
-        super().commit_file()
-        # change the storage class to local
-        file_instance: FileInstance = self.file_record.object_version.file
-        file_instance.storage_class = LOCAL_TRANSFER_TYPE
-        db.session.add(file_instance)
