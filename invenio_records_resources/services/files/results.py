@@ -45,7 +45,8 @@ class FileItem(RecordItem):
         _links = self._links_tpl.expand(self._identity, self._file)
 
         transfer = current_transfer_registry.get_transfer(
-            file_record=self._file, service=self._service, record=self._record)
+            file_record=self._file, service=self._service, record=self._record
+        )
         for k, v in transfer.expand_links(self._identity, _links["self"]).items():
             if v is not None:
                 _links[k] = v
@@ -99,9 +100,7 @@ class FileList(ServiceListResult):
             projection = self._service.file_schema.dump(
                 entry,
                 context=dict(
-                    identity=self._identity,
-                    record=self._record,
-                    service=self._service
+                    identity=self._identity, record=self._record, service=self._service
                 ),
             )
 
@@ -113,7 +112,8 @@ class FileList(ServiceListResult):
 
             # add transfer links
             transfer = current_transfer_registry.get_transfer(
-                file_record=entry, service=self._service, record=self._record)
+                file_record=entry, service=self._service, record=self._record
+            )
             for k, v in transfer.expand_links(self._identity, links["self"]).items():
                 if v is not None:
                     links[k] = v
