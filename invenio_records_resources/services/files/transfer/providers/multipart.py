@@ -20,8 +20,8 @@ class MultipartTransfer(BaseTransfer):
 
         parts = file_metadata.pop("parts", None)
         part_size = file_metadata.pop("part_size", None)
-        size = file_metadata.get("size", None)
-        checksum = file_metadata.get("checksum", None)
+        size = file_metadata.pop("size", None)
+        checksum = file_metadata.pop("checksum", None)
 
         if not parts:
             raise TransferException("Multipart file transfer requires parts.")
@@ -191,8 +191,8 @@ class MultipartTransfer(BaseTransfer):
             "content": None,  # remove content when multipart upload is not complete
             "parts": [
                 {
-                    "part": 1,
-                    "url": f"{self_url}/content/{part_no}",
+                    "part": part_no+1,
+                    "url": f"{self_url}/content/{part_no+1}",
                     "expiration": (datetime.utcnow() + timedelta(days=14)).isoformat(),
                 }
                 for part_no in range(int(parts.value))
