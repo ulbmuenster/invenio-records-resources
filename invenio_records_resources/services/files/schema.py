@@ -116,6 +116,10 @@ class FileSchema(Schema):
         """
         Enriches the dumped data with the transfer data.
         """
-        transfer = current_transfer_registry.get_transfer(file_record=original_data)
+        transfer = current_transfer_registry.get_transfer(
+            file_record=original_data,
+            service=self.context.get("service"),
+            record=self.context.get("record"),
+        )
         data |= transfer.transfer_data
         return data

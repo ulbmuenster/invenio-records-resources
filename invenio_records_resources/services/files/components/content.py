@@ -24,7 +24,7 @@ class FileContentComponent(FileServiceComponent):
             raise Exception(f'File with key "{file_key}" has not been initialized yet.')
 
         transfer = current_transfer_registry.get_transfer(
-            record=record, file_record=file_record
+            record=record, file_record=file_record, service=self.service, uow=self.uow
         )
         try:
             transfer.set_file_content(stream, content_length)

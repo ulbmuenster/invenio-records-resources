@@ -27,7 +27,7 @@ class FileMultipartContentComponent(FileServiceComponent):
             raise NotFound(f'File with key "{file_key}" has not been initialized yet.')
 
         transfer = current_transfer_registry.get_transfer(
-            record=record, file_record=file_record
+            record=record, file_record=file_record, service=self.service, uow=self.uow
         )
         try:
             transfer.set_file_multipart_content(part, stream, content_length)
