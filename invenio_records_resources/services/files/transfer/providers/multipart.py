@@ -220,10 +220,8 @@ class MultipartTransfer(BaseTransfer):
         :param content_length: The content length of the part. Must be equal to the
             part_size for all parts except the last one.
         """
-        multipart_metadata = self.multipart_metadata
-
         storage = self._get_storage()
-        updated_multipart_metadata = storage.multipart_set_content(part, stream, content_length, **multipart_metadata)
+        updated_multipart_metadata = storage.multipart_set_content(part, stream, content_length, **self.multipart_metadata)
 
         self.add_multipart_metadata(updated_multipart_metadata)
 
