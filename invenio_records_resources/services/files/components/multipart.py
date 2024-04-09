@@ -41,4 +41,4 @@ class FileMultipartContentComponent(FileServiceComponent):
         transfer = current_transfer_registry.get_transfer(
             record=record, file_record=deleted_file, service=self.service, uow=self.uow
         )
-        transfer.delete_file(deleted_file)
+        transfer.delete_file()
