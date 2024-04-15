@@ -13,7 +13,9 @@
 from invenio_records_permissions import RecordPermissionPolicy
 from invenio_records_permissions.generators import AnyUser, SystemProcess
 
-from invenio_records_resources.services.files.generators import AnyUserIfFileIsLocal
+from invenio_records_resources.services.files.generators import IfTransferType
+from invenio_records_resources.services.files.transfer import LOCAL_TRANSFER_TYPE, MULTIPART_TRANSFER_TYPE, \
+    FETCH_TRANSFER_TYPE
 
 
 class PermissionPolicy(RecordPermissionPolicy):
@@ -25,9 +27,21 @@ class PermissionPolicy(RecordPermissionPolicy):
     can_update = [AnyUser(), SystemProcess()]
     can_delete = [AnyUser(), SystemProcess()]
     can_create_files = [AnyUser(), SystemProcess()]
-    can_set_content_files = [AnyUserIfFileIsLocal(), SystemProcess()]
-    can_get_content_files = [AnyUserIfFileIsLocal(), SystemProcess()]
-    can_commit_files = [AnyUserIfFileIsLocal(), SystemProcess()]
+    can_set_content_files = [
+        IfTransferType({
+            LOCAL_TRANSFER_TYPE: AnyUser(),
+            FETCH_TRANSFER_TYPE: SystemProcess(),
+            MULTIPART_TRANSFER_TYPE: AnyUser(),
+    }), SystemProcess()]
+    can_get_content_files = [
+        IfTransferType({
+            LOCAL_TRANSFER_TYPE: AnyUser(),
+    }), SystemProcess()]
+    can_commit_files = [IfTransferType({
+        LOCAL_TRANSFER_TYPE: AnyUser(),
+        FETCH_TRANSFER_TYPE: SystemProcess(),
+        MULTIPART_TRANSFER_TYPE: AnyUser(),
+    }), SystemProcess()]
     can_read_files = [AnyUser(), SystemProcess()]
     can_update_files = [AnyUser(), SystemProcess()]
     can_delete_files = [AnyUser(), SystemProcess()]
