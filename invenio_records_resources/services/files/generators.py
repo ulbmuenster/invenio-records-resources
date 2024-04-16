@@ -23,8 +23,11 @@ class IfTransferType(Generator):
             for transfer_type, needs in transfer_type_to_needs.items()
         }
 
-        if not isinstance(else_, (list, tuple)):
+        if not else_:
+            else_ = []
+        elif not isinstance(else_, (list, tuple)):
             else_ = [else_]
+
         self._else = else_
 
     def needs(self, **kwargs):
